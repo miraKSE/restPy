@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Product</title>
+</head>
+<body>
+    <h1>Add Product</h1>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    <form method="post" action="/add-product">
+        <label for="name">Name:</label>
+        <input type="text" name="name" id="name" required><br>
+        <label for="price">Price:</label>
+        <input type="number" name="price" id="price" step="0.01" required><br>
+        <label for="quantity">Quantity:</label>
+        <input type="number" name="quantity" id="quantity" required><br>
+        <label for="provider_id">Provider ID:</label>
+        <input type="number" name="provider_id" id="provider_id"><br>
+        <button type="submit">Add Product</button>
+    </form>
+</body>
+</html>

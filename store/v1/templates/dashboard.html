@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Панель управления</title>
+</head>
+<body>
+    <h1>Добро пожаловать, {{ session['user']['login'] }}</h1>
+    <ul>
+        <li><a href="/products">Управление товарами</a></li>
+        <li><a href="/customers">Управление покупателями</a></li>
+        <li><a href="/orders">Управление заказами</a></li>
+    </ul>
+    <a href="/logout">Выйти</a>
+</body>
+</html>

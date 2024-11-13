@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Product</title>
+</head>
+<body>
+    <h1>Edit Product</h1>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    <form method="post" action="/edit-product/{{ product.id }}">
+        <label for="name">Name:</label>
+        <input type="text" name="name" id="name" value="{{ product.name }}" required><br>
+        <label for="price">Price:</label>
+        <input type="number" name="price" id="price" step="0.01" value="{{ product.price }}" required><br>
+        <label for="quantity">Quantity:</label>
+        <input type="number" name="quantity" id="quantity" value="{{ product.quantity }}" required><br>
+        <label for="provider_id">Provider ID:</label>
+        <input type="number" name="provider_id" id="provider_id" value="{{ product.provider }}"><br>
+        <button type="submit">Save Changes</button>
+    </form>
+    <a href="/products">Back to Products</a>
+</body>
+</html>

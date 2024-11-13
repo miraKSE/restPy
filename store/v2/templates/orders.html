@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заказы</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f9fc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 700px;
+            width: 100%;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 14px;
+            color: #555555;
+            margin-bottom: 5px;
+        }
+
+        input[type="number"],
+        input[type="date"] {
+            padding: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #0078d7;
+            box-shadow: 0 0 4px rgba(0, 120, 215, 0.5);
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background-color: #f9f9f9;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        a {
+            display: block;
+            margin-top: 20px;
+            text-align: center;
+            text-decoration: none;
+            color: #0078d7;
+            font-size: 14px;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: #005fa3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Заказы</h1>
+        <form method="post">
+            <label for="customer_id">ID покупателя:</label>
+            <input type="number" name="customer_id" id="customer_id" required>
+
+            <label for="state_id">ID состояния:</label>
+            <input type="number" name="state_id" id="state_id" required>
+
+            <label for="delivery_id">ID доставки:</label>
+            <input type="number" name="delivery_id" id="delivery_id">
+
+            <label for="sum">Сумма:</label>
+            <input type="number" step="0.01" name="sum" id="sum" required>
+
+            <label for="date">Дата:</label>
+            <input type="date" name="date" id="date" required>
+
+            <button type="submit">Добавить</button>
+        </form>
+        <h2>Список заказов</h2>
+        <ul>
+            {% for order in orders %}
+            <li>
+                <strong>ID заказа:</strong> {{ order['id'] }}<br>
+                <strong>Покупатель:</strong> {{ order['customer'] or "Не указан" }}<br>
+                <strong>Состояние:</strong> {{ order['state'] }}<br>
+                {% if order['delivery'] %}
+                    <strong>Доставка:</strong> {{ order['delivery'] }}<br>
+                {% endif %}
+                <strong>Сумма:</strong> {{ order['sum'] }} руб.<br>
+                <strong>Дата:</strong> {{ order['date'] }}
+            </li>
+            {% endfor %}
+        </ul>
+        <a href="/dashboard">Назад</a>
+    </div>
+</body>
+</html>

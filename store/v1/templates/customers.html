@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Покупатели</title>
+</head>
+<body>
+    <h1>Покупатели</h1>
+    <form method="post">
+        <label>Имя:</label>
+        <input type="text" name="name" required><br>
+        <label>Email:</label>
+        <input type="email" name="email"><br>
+        <label>Телефон:</label>
+        <input type="text" name="phone"><br>
+        <label>ID статуса:</label>
+        <input type="number" name="state_id"><br>
+        <button type="submit">Добавить</button>
+    </form>
+    <h2>Список покупателей</h2>
+    <ul>
+        {% for customer in customers %}
+        <li>
+            {{ customer['name'] }} - {{ customer['email'] or "Email не указан" }}
+            ({{ customer['phone'] or "Телефон не указан" }})
+            {% if customer['state'] %}
+                Статус: {{ customer['state'] }}
+            {% else %}
+                Статус не указан
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <a href="/dashboard">Назад</a>
+</body>
+</html>

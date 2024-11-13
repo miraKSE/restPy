@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f9fc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333333;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 16px;
+            color: #555555;
+            margin: 10px 0;
+        }
+
+        a {
+            text-decoration: none;
+            color: #0078d7;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 0 10px;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: #005fa3;
+        }
+
+        .actions {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Профиль</h1>
+        <p><strong>Имя:</strong> {{ user['name'] }}</p>
+        <p><strong>Email:</strong> {{ user['email'] }}</p>
+        <div class="actions">
+            <a href="/products">Каталог товаров</a>
+            <span>|</span>
+            <a href="/logout">Выйти</a>
+        </div>
+    </div>
+</body>
+</html>

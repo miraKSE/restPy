@@ -1,0 +1,130 @@
+from flask import Flask, render_template, request, redirect, jsonify, session
+from supabase import create_client, Client
+import jwt
+import datetime
+
+app = Flask(__name__)
+app.secret_key = 'a_very_secure_and_random_string'
+
+# Настройки Supabase
+SUPABASE_URL = "https://qbvxupwunmlmympeoggp.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFidnh1cHd1bm1sbXltcGVvZ2dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE0MzY2ODksImV4cCI6MjA0NzAxMjY4OX0.fRBrUG-qSXF4XxXtwrHhsLPXB7tnojgx6CaKjZGrqbQ"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Секретный ключ для JWT
+JWT_SECRET = 'another_secure_and_random_string'
+JWT_ALGORITHM = 'HS256'
+
+
+def handle_response(response):
+    """Универсальная обработка ответа Supabase."""
+    if not response.data:
+        raise ValueError("Ошибка запроса к Supabase: " + str(response.error))
+    return response.data
+
+
+def logout_user():
+    """Производит логаут пользователя."""
+    session.pop('user', None)
+
+
+def validate_token():
+    """Проверяет токен текущего пользователя."""
+    if 'user' not in session:
+        return False
+
+    user_id = session['user']['id']
+    try:
+        # Проверка токена в таблице jwts
+        response = supabase.table("jwts").select("*").eq("user_id", user_id).execute()
+        tokens = handle_response(response)
+
+        if not tokens:
+            logout_user()
+            return False
+
+        # Проверка истечения срока действия токена
+        token_data = tokens[0]
+        expires_at = datetime.datetime.fromisoformat(token_data['expires_at'])
+        if expires_at < datetime.datetime.utcnow():
+            # Токен истёк, разлогиниваем
+            logout_user()
+            return False
+
+        return True
+    except Exception as e:
+        print(f"Ошибка при проверке токена: {e}")
+        logout_user()
+        return False
+
+
+@app.route('/')
+def index():
+    if 'user' in session:
+        return redirect('/dashboard')
+    return redirect('/login')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        login = request.form.get('login')
+        password = request.form.get('password')
+
+        try:
+            # Проверка учетных данных
+            response = supabase.table("users").select("*").eq("login", login).eq("password", password).execute()
+            users = handle_response(response)
+            if not users:
+                return render_template('login.html', error="Неверные учетные данные!")
+
+            user = users[0]
+            session['user'] = user
+
+            # Генерация JWT-токена
+            expiration_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
+            token = jwt.encode({'user_id': user['id'], 'exp': expiration_time}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+            # Сохранение токена в таблицу `jwts`
+            try:
+                supabase.table("jwts").insert({
+                    "user_id": user['id'],
+                    "token": token,
+                    "expires_at": expiration_time.isoformat()
+                }).execute()
+            except Exception as insert_error:
+                print(f"Ошибка при сохранении токена в таблицу jwts: {insert_error}")
+                return render_template('login.html', error="Ошибка авторизации.")
+
+            return redirect('/dashboard')
+        except Exception as e:
+            return render_template('login.html', error=str(e))
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect('/login')
+
+
+@app.route('/dashboard')
+def dashboard():
+    if not validate_token():
+        return redirect('/login')
+    return render_template('dashboard.html')
+
+
+@app.before_request
+def clear_expired_tokens():
+    """Удаляет истёкшие токены перед каждым запросом."""
+    try:
+        now = datetime.datetime.utcnow().isoformat()
+        supabase.table("jwts").delete().lt("expires_at", now).execute()
+    except Exception as e:
+        print(f"Ошибка при очистке истёкших токенов: {e}")
+
+
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=7000, debug=True)

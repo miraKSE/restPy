@@ -1,0 +1,16 @@
+import requests
+
+SUPABASE_URL = "https://qbvxupwunmlmympeoggp.supabase.co"
+SUPABASE_KEY = "ваш_ключ"
+headers = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json"
+}
+
+sql_query = {
+    "query": "SELECT * FROM product WHERE price > 100;"
+}
+
+response = requests.post(f"{SUPABASE_URL}/rest/v1/rpc", json=sql_query, headers=headers)
+print(response.json())

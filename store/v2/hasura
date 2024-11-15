@@ -1,0 +1,288 @@
+from flask import Flask, render_template, request, redirect, jsonify, session
+import requests
+import json
+
+app = Flask(__name__)
+app.secret_key = 'a_very_secure_and_random_string'
+
+# Hasura GraphQL endpoint and Admin Secret
+HASURA_URL = "https://viable-pigeon-72.hasura.app/v1/graphql"
+HASURA_ADMIN_SECRET = "4tqWHzTodx7KVvoTDRSJa1o995X1sA6NN52ydz1Xx6fRdKxafi8CAExAuNTE2eci"
+
+# Function to send a GraphQL query to Hasura
+def send_graphql_query(query, variables=None):
+    headers = {
+        "x-hasura-admin-secret": HASURA_ADMIN_SECRET,
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "query": query,
+        "variables": variables or {}
+    }
+    response = requests.post(HASURA_URL, headers=headers, json=payload)
+    if response.status_code != 200:
+        raise Exception(f"GraphQL request failed: {response.status_code}, {response.text}")
+    return response.json()
+
+def handle_response(response):
+    """
+    Универсальная обработка ответа от Hasura.
+    Проверяет, есть ли данные или ошибки, и возвращает результат.
+    """
+    if 'data' not in response or not response['data']:
+        raise ValueError("Ошибка запроса к Hasura")
+    return response['data']
+
+@app.route('/')
+def index():
+    if 'user' in session:
+        return redirect('/dashboard')
+    return redirect('/login')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        login = request.form.get('login')
+        password = request.form.get('password')
+
+        try:
+            # Проверка учетных данных
+            query = """
+                query ($login: String!, $password: String!) {
+                    users(where: {login: {_eq: $login}, password: {_eq: $password}}) {
+                        id
+                        login
+                        password
+                    }
+                }
+            """
+            variables = {"login": login, "password": password}
+            response = send_graphql_query(query, variables)
+            users = handle_response(response)
+            if not users.get("users"):
+                return render_template('login.html', error="Неверные учетные данные!")
+
+            session['user'] = users["users"][0]
+            return redirect('/dashboard')
+        except Exception as e:
+            return render_template('login.html', error=str(e))
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect('/login')
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user' not in session:
+        return redirect('/login')
+    return render_template('dashboard.html')
+
+@app.route('/products', methods=['GET'])
+def products():
+    if 'user' not in session:
+        return redirect('/login')
+
+    search_query = request.args.get('search', '').strip()
+
+    try:
+        query = """
+            query ($search_query: String) {
+                product(where: {name: {_ilike: $search_query}}) {
+                    id
+                    name
+                    price
+                    quantity
+                    provider
+                }
+            }
+        """
+        variables = {"search_query": f"%{search_query}%"} if search_query else {}
+        response = send_graphql_query(query, variables)
+        products = handle_response(response)
+        return render_template('products.html', products=products['product'], search_query=search_query)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/add-product', methods=['GET', 'POST'])
+def add_product():
+    if 'user' not in session:
+        return redirect('/login')
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        price = request.form.get('price')
+        quantity = request.form.get('quantity')
+        provider_id = request.form.get('provider_id')
+
+        try:
+            # Добавление нового товара
+            query = """
+                mutation ($name: String!, $price: Float!, $quantity: Int!, $provider_id: Int) {
+                    insert_product(objects: {name: $name, price: $price, quantity: $quantity, provider: $provider_id}) {
+                        returning {
+                            id
+                        }
+                    }
+                }
+            """
+            variables = {
+                "name": name,
+                "price": float(price),
+                "quantity": int(quantity),
+                "provider_id": int(provider_id) if provider_id else None
+            }
+            response = send_graphql_query(query, variables)
+            handle_response(response)
+            return redirect('/products')
+        except Exception as e:
+            return render_template('add_product.html', error=str(e))
+
+    return render_template('add_product.html')
+
+@app.route('/edit-product/<int:product_id>', methods=['GET', 'POST'])
+def edit_product(product_id):
+    if 'user' not in session:
+        return redirect('/login')
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        price = request.form.get('price')
+        quantity = request.form.get('quantity')
+        provider_id = request.form.get('provider_id')
+
+        try:
+            # Обновление данных продукта
+            query = """
+                mutation ($id: Int!, $name: String!, $price: Float!, $quantity: Int!, $provider_id: Int) {
+                    update_product(
+                        where: {id: {_eq: $id}},
+                        _set: {name: $name, price: $price, quantity: $quantity, provider: $provider_id}
+                    ) {
+                        affected_rows
+                    }
+                }
+            """
+            variables = {
+                "id": product_id,
+                "name": name,
+                "price": float(price),
+                "quantity": int(quantity),
+                "provider_id": int(provider_id) if provider_id else None
+            }
+            response = send_graphql_query(query, variables)
+            handle_response(response)
+            return redirect('/products')
+        except Exception as e:
+            return render_template('edit_product.html', error=str(e))
+
+    try:
+        # Получение текущих данных продукта
+        query = """
+            query ($id: Int!) {
+                product(where: {id: {_eq: $id}}) {
+                    id
+                    name
+                    price
+                    quantity
+                    provider
+                }
+            }
+        """
+        variables = {"id": product_id}
+        response = send_graphql_query(query, variables)
+        product = handle_response(response)
+        return render_template('edit_product.html', product=product['product'][0])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/orders', methods=['GET', 'POST'])
+def orders():
+    if 'user' not in session:
+        return redirect('/login')
+
+    if request.method == 'POST':
+        customer_id = request.form.get('customer_id')
+        state_id = request.form.get('state_id')
+        delivery_id = request.form.get('delivery_id')
+        sum_value = request.form.get('sum')
+        date = request.form.get('date')
+
+        try:
+            # Добавление нового заказа
+            query = """
+                mutation ($customer_id: Int!, $state_id: Int!, $delivery_id: Int, $sum_value: Float!, $date: String!) {
+                    insert_orders(objects: {customer: $customer_id, state: $state_id, delivery: $delivery_id, sum: $sum_value, date: $date}) {
+                        returning {
+                            id
+                        }
+                    }
+                }
+            """
+            variables = {
+                "customer_id": int(customer_id),
+                "state_id": int(state_id),
+                "delivery_id": int(delivery_id) if delivery_id else None,
+                "sum_value": float(sum_value),
+                "date": date
+            }
+            response = send_graphql_query(query, variables)
+            handle_response(response)
+            return redirect('/orders')
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+
+    try:
+        # Получение списка заказов
+        query = """
+            query {
+                orders {
+                    id
+                    customer
+                    state
+                    delivery
+                    sum
+                    date
+                }
+            }
+        """
+        response = send_graphql_query(query)
+        orders = handle_response(response)
+        return render_template('orders.html', orders=orders['orders'])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/customers', methods=['GET', 'POST'])
+def customers():
+    if 'user' not in session:
+        return redirect('/login')
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        phone = request.form.get('phone')
+        state_id = request.form.get('state_id')
+
+        try:
+            # Добавление нового покупателя
+            query = """
+                mutation ($name: String!, $email: String!, $phone: String!, $state_id: Int) {
+                    insert_customer(objects: {name: $name, email: $email, phone: $phone, state: $state_id}) {
+                        returning {
+                            id
+                        }
+                    }
+                }
+            """
+            variables = {
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "state_id": int(state_id) if state_id else None
+            }
+            response = send_graphql_query(query, variables)
+            handle_response(response)
+           
